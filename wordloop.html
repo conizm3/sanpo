@@ -9,7 +9,7 @@
     <link rel="apple-touch-icon" href="wordloop-icon.svg">
     <link rel="icon" type="image/svg+xml" href="wordloop-icon.svg">
     <meta property="og:title" content="Wordloop">
-    <meta property="og:description" content="シンプルな英単語帳アプリ">
+    <meta property="og:description" content="シンプルな英単語帳">
     <meta property="og:image" content="wordloop-ogp.svg">
     
     <!-- Libraries -->
@@ -80,6 +80,9 @@
         /* Animations */
         .fade-in { animation: fadeIn 0.4s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .slide-in { animation: slideIn 0.3s ease-out forwards; }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
         
         /* Swipe Hint Animation */
         .animate-swipe-left {
@@ -183,8 +186,6 @@
         // 1. Translation (Fastest: Lingva -> MyMemory)
         const fetchTranslation = async (term, langPair) => {
             const [source, target] = langPair.split('|');
-            
-            // Primary: Lingva Translate
             try {
                 const res = await fetch(`https://lingva.ml/api/v1/${source}/${target}/${encodeURIComponent(term)}`);
                 if (res.ok) {
@@ -193,7 +194,6 @@
                 }
             } catch (e) { /* continue */ }
 
-            // Fallback: MyMemory
             try {
                 const res = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(term)}&langpair=${langPair}`);
                 const data = await res.json();
@@ -207,7 +207,6 @@
             }
         };
 
-        // 2. Dictionary APIs
         const fetchJishoData = async (term) => {
             try {
                 const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(term)}`)}`);
@@ -226,7 +225,6 @@
 
         // --- Data Fetching Strategies ---
 
-        // Strategy A: 速報 (Translation Only)
         const fetchQuickData = async (term) => {
             const isJp = isJapanese(term);
             const langPair = isJp ? "ja|en" : "en|ja";
@@ -251,7 +249,6 @@
             };
         };
 
-        // Strategy B: 確報 (Dictionary Full Search)
         const fetchRichData = async (term) => {
             let searchWord = term;
             let isJpSearch = isJapanese(term);
@@ -263,7 +260,6 @@
             let audioUrl = ""; 
             let jishoFound = false;
 
-            // 1. Jisho.org
             try {
                 const jishoData = await fetchJishoData(term);
                 if (jishoData && jishoData.data && jishoData.data.length > 0) {
@@ -335,7 +331,6 @@
                 }
             }
 
-            // 2. Free Dictionary (Enrichment)
             if (searchWord) {
                 try {
                     const dictData = await fetchFreeDictData(searchWord);
@@ -362,8 +357,6 @@
                                     }
                                 }
                             }
-                        } else if (!isJpSearch && !jishoFound) {
-                             // JishoなしFreeDictあり
                         }
                     }
                 } catch(e) {}
@@ -415,6 +408,34 @@
             return (
                 <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 neu-flat px-6 py-3 rounded-full text-sm text-[#258FAF] font-bold z-[60] fade-in shadow-lg text-center whitespace-nowrap bg-white">
                     {msg}
+                </div>
+            );
+        };
+
+        // 汎用ダイアログモーダル (Alert / Confirm)
+        const DialogModal = ({ isOpen, type, message, onConfirm, onCancel }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-slate-100/90 z-[70] flex items-center justify-center p-4 backdrop-blur-sm fade-in">
+                    <div className="neu-flat bg-[#F8FAFC] p-6 w-full max-w-xs text-center">
+                        <p className="text-gray-700 font-bold mb-6 leading-relaxed whitespace-pre-wrap">{message}</p>
+                        <div className="flex gap-4 justify-center">
+                            {type === 'confirm' && (
+                                <button 
+                                    onClick={onCancel} 
+                                    className="neu-btn w-24 py-3 text-gray-500 font-bold text-sm rounded-xl"
+                                >
+                                    キャンセル
+                                </button>
+                            )}
+                            <button 
+                                onClick={onConfirm} 
+                                className="bg-[#258FAF] text-white w-24 py-3 rounded-xl font-bold text-sm shadow-lg active:scale-95 transition-transform"
+                            >
+                                OK
+                            </button>
+                        </div>
+                    </div>
                 </div>
             );
         };
@@ -479,43 +500,48 @@
 
         // --- 4. Views ---
 
-        const SearchView = ({ onSaveWord, savedWords, setToast, externalResult, setExternalResult, isFromList, onBack }) => {
+        const SearchView = ({ onSaveWord, savedWords, setToast, externalResult, setExternalResult, isFromList, onBack, openAlert }) => {
             const [term, setTerm] = useState('');
             const [loading, setLoading] = useState(false);
             const [loadingMsg, setLoadingMsg] = useState('');
             const resultRef = useRef(null);
-            const richDataLoadedRef = useRef(false);
+            const searchIdRef = useRef(0);
             
             const handleSearch = async (e) => {
                 if (e) e.preventDefault();
                 if (!term.trim()) return;
                 
+                // 競合回避用ID
+                const currentId = ++searchIdRef.current;
+
                 setLoading(true);
                 setLoadingMsg("検索中...");
                 setExternalResult(null);
-                richDataLoadedRef.current = false;
 
+                // 速報
                 fetchQuickData(term).then(quickData => {
-                    if (!richDataLoadedRef.current) {
+                    if (currentId === searchIdRef.current && !externalResult) {
                         setExternalResult(quickData);
                         setLoading(false);
                     }
                 }).catch(() => {});
 
+                // 確報
                 try {
                     const richData = await fetchRichData(term);
-                    richDataLoadedRef.current = true;
-                    setExternalResult(richData);
+                    if (currentId === searchIdRef.current) {
+                        setExternalResult(richData);
+                    }
                 } catch (err) {
-                    if (!richDataLoadedRef.current && !externalResult) {
+                    if (currentId === searchIdRef.current && !externalResult) {
                         if (err.message === "NOT_FOUND") {
-                            setToast('見つかりませんでした。');
+                            openAlert('見つかりませんでした。\nスペルを確認してください。');
                         } else {
-                            setToast('検索エラーが発生しました。');
+                            openAlert('検索エラーが発生しました。');
                         }
                     }
                 }
-                setLoading(false);
+                if (currentId === searchIdRef.current) setLoading(false);
             };
 
             useEffect(() => {
@@ -536,7 +562,7 @@
                                 value={term}
                                 onChange={(e) => setTerm(e.target.value)}
                                 className="neu-input w-full p-4 pl-12 text-lg text-[#258FAF] placeholder-gray-400" 
-                                placeholder="単語を入力 (例: rabbit / うさぎ)" 
+                                placeholder="単語を入力 (例: apple / リンゴ)" 
                             />
                             <i className="fas fa-search absolute left-5 top-5 text-gray-400"></i>
                             <button type="submit" className="absolute right-2 top-2 bg-[#258FAF] text-white w-12 h-12 flex items-center justify-center rounded-xl shadow-md active:scale-95 transition-transform">
@@ -565,7 +591,6 @@
 
                     {currentData && (
                         <div ref={resultRef} className="neu-flat p-5 md:p-6 mb-8 fade-in">
-                            {/* 戻る/閉じるボタン */}
                             {isFromList && (
                                 <button 
                                     onClick={onBack} 
@@ -610,7 +635,6 @@
                                                 </span>
                                             </div>
                                             
-                                            {/* 複数の定義を表示 */}
                                             <div className="pl-2 border-l-2 border-[#258FAF]/30 space-y-6">
                                                 {m.definitions.map((def, dIdx) => (
                                                     <div key={dIdx}>
@@ -717,7 +741,7 @@
             );
         };
 
-        const ReviewView = ({ savedWords, onFinish }) => {
+        const ReviewView = ({ savedWords, onFinish, openAlert }) => {
             const [isStarted, setIsStarted] = useState(false);
             const [queue, setQueue] = useState([]);
             const [index, setIndex] = useState(0);
@@ -725,7 +749,7 @@
             const touchStartX = useRef(null);
 
             const startReview = () => {
-                if (savedWords.length === 0) return alert('単語帳が空です');
+                if (savedWords.length === 0) return openAlert('単語帳が空です');
                 const shuffled = [...savedWords].sort(() => Math.random() - 0.5);
                 setQueue(shuffled);
                 setIndex(0);
@@ -736,7 +760,7 @@
             const handleNext = (e) => {
                 if (e) e.stopPropagation();
                 if (index >= queue.length - 1) {
-                    alert('復習完了！お疲れ様でした。');
+                    openAlert('復習完了！お疲れ様でした。');
                     onFinish();
                 } else {
                     setIsFlipped(false);
@@ -798,7 +822,7 @@
                                 <div className="flex-1 flex flex-col justify-center items-center w-full">
                                     <h2 className="text-4xl font-bold text-[#258FAF] break-all">{currentCard.word}</h2>
                                     
-                                    {/* スピーカーボタン: 単語の下に配置 */}
+                                    {/* スピーカーボタン */}
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); speak(currentCard.word, currentCard.audioUrl); }} 
                                         className="neu-btn w-12 h-12 flex items-center justify-center rounded-full text-[#258FAF] mt-8"
@@ -820,7 +844,6 @@
                                 <span className="absolute top-6 left-6 text-xs font-bold text-[#258FAF]">ANSWER</span>
                                 <h3 className="text-2xl font-bold text-gray-700 mb-4">{currentCard.translation}</h3>
                                 <div className="w-full overflow-y-auto max-h-32 text-sm text-gray-500 mb-4 px-4 space-y-2">
-                                    {/* 復習モードでは代表的な意味を表示 */}
                                     {currentCard.meanings && currentCard.meanings.length > 0 
                                         ? currentCard.meanings.map((m, i) => (
                                             <p key={i}><span className="font-bold">{m.partOfSpeech} ({getPartOfSpeechJa(m.partOfSpeech)}):</span> {m.definitions[0].ja}</p>
@@ -834,7 +857,8 @@
                             </div>
                         </div>
                     </div>
-                    <div className="w-full max-w-sm mt-4 md:mt-8">
+                    {/* アニメーション適用: key={index} でカード切り替え時にアニメーション発火 */}
+                    <div key={index} className="w-full max-w-sm mt-4 md:mt-8 slide-in">
                         <button onClick={handleNext} className="w-full bg-[#258FAF] text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
                             次の単語へ <i className="fas fa-chevron-right"></i>
                         </button>
@@ -853,7 +877,14 @@
             const [isSettingsOpen, setIsSettingsOpen] = useState(false);
             const [isFromList, setIsFromList] = useState(false);
             
+            // Dialog State
+            const [dialog, setDialog] = useState({ isOpen: false, type: 'alert', message: '', onConfirm: null });
+            
             const [user, setUser] = useState(null);
+
+            // Dialog Helper
+            const openAlert = (msg) => setDialog({ isOpen: true, type: 'alert', message: msg, onConfirm: () => setDialog(prev => ({ ...prev, isOpen: false })) });
+            const openConfirm = (msg, onConfirm) => setDialog({ isOpen: true, type: 'confirm', message: msg, onConfirm: () => { onConfirm(); setDialog(prev => ({ ...prev, isOpen: false })); } });
 
             useEffect(() => {
                 if (auth) {
@@ -897,7 +928,7 @@
             const handleLogin = () => {
                 if (!auth) return;
                 const provider = new firebase.auth.GoogleAuthProvider();
-                auth.signInWithPopup(provider).catch(e => alert(`ログインエラー: ${e.message}`));
+                auth.signInWithPopup(provider).catch(e => openAlert(`ログインエラー: ${e.message}`));
             };
 
             const handleLogout = () => {
@@ -919,11 +950,9 @@
             };
 
             const handleDeleteWord = (word) => {
-                setTimeout(() => {
-                    if(confirm(`「${word}」を削除しますか？`)) {
-                        setSavedWords(prev => prev.filter(w => w.word !== word));
-                    }
-                }, 10);
+                openConfirm(`「${word}」を削除しますか？`, () => {
+                    setSavedWords(prev => prev.filter(w => w.word !== word));
+                });
             };
 
             const handleListClick = (wordData) => {
@@ -968,16 +997,16 @@
                     try {
                         const imported = JSON.parse(event.target.result);
                         if (Array.isArray(imported)) {
-                            if(confirm('現在のデータを上書きしますか？\n（既存の単語帳は消え、ファイルの内容になります）')) {
+                            openConfirm('現在のデータを上書きしますか？\n（既存の単語帳は消え、ファイルの内容になります）', () => {
                                 setSavedWords(imported);
                                 showToast('データを復元しました');
                                 setIsSettingsOpen(false);
-                            }
+                            });
                         } else {
-                            alert('無効なファイル形式です');
+                            openAlert('無効なファイル形式です');
                         }
                     } catch (error) {
-                        alert('読み込みに失敗しました');
+                        openAlert('読み込みに失敗しました');
                     }
                 };
                 reader.readAsText(file);
@@ -989,8 +1018,8 @@
                         className="p-4 z-50 flex justify-between items-center h-16 neu-flat mx-4 mt-4 mb-2 relative cursor-pointer hover:opacity-80 transition-opacity"
                     >
                         <div className="flex-1 flex justify-center items-center" onClick={resetToHome}>
-                            <img src="wordloop-top.svg" alt="Wordloop" className="h-8" />
-                        </div>
+                                                <img src="wordloop-top.svg" alt="Wordloop" className="h-8" />
+                                        </div>
                         <button onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(true); }} className="absolute right-4 text-gray-400 hover:text-[#258FAF]">
                             <i className="fas fa-cog"></i>
                         </button>
@@ -1007,6 +1036,7 @@
                                 setExternalResult={setSearchResult}
                                 isFromList={isFromList}
                                 onBack={handleBack}
+                                openAlert={openAlert}
                             />
                         )}
                         {tab === 'list' && (
@@ -1020,6 +1050,7 @@
                             <ReviewView 
                                 savedWords={savedWords} 
                                 onFinish={() => setTab('search')}
+                                openAlert={openAlert}
                             />
                         )}
                     </main>
@@ -1032,6 +1063,14 @@
                         user={user}
                         onLogin={handleLogin}
                         onLogout={handleLogout}
+                    />
+                    
+                    <DialogModal 
+                        isOpen={dialog.isOpen}
+                        type={dialog.type}
+                        message={dialog.message}
+                        onConfirm={dialog.onConfirm}
+                        onCancel={() => setDialog(prev => ({ ...prev, isOpen: false }))}
                     />
 
                     {/* ナビゲーション: 固定配置 */}
