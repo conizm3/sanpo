@@ -109,7 +109,6 @@
             to { opacity: 0; transform: translateX(-50px); } 
         }
 
-        /* 追加: 右へスライドアウト (Clear用) */
         .slide-out-right { animation: slideOutRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
         @keyframes slideOutRight { 
             from { opacity: 1; transform: translateX(0); } 
@@ -145,6 +144,13 @@
             50% { opacity: 1; transform: translateX(0); }
             100% { opacity: 0; transform: translateX(10px); }
         }
+        
+        /* Flow Animation for X and O */
+        .animate-flow-x { animation: flowX 1.5s infinite; }
+        @keyframes flowX { 0% { opacity: 0; transform: translateX(10px); } 50% { opacity: 1; transform: translateX(0); } 100% { opacity: 0; transform: translateX(-10px); } }
+        
+        .animate-flow-o { animation: flowO 1.5s infinite; }
+        @keyframes flowO { 0% { opacity: 0; transform: translateX(-10px); } 50% { opacity: 1; transform: translateX(0); } 100% { opacity: 0; transform: translateX(10px); } }
 
         /* Card Flip Fixed */
         .card-flip { perspective: 1000px; }
@@ -286,7 +292,6 @@
             const isJp = isJapanese(term);
             const langPair = isJp ? "ja|en" : "en|ja";
             
-            // 修正: 英語入力の場合はスペルチェックのためにFreeDictも同時に叩く (Strict Mode)
             const promises = [translateText(term, langPair)];
             if (!isJp) {
                 if (!term.trim().includes(' ')) {
@@ -795,8 +800,8 @@
                 const distance = touchStartX.current - touchEndX;
                 
                 if (Math.abs(distance) > 100) { 
-                    if (distance > 0) handleNext(false); // Left -> Unclear
-                    else handleNext(true); // Right -> Clear
+                    if (distance > 0) handleNext(false); 
+                    else handleNext(true); 
                 } else {
                     cardRef.current.style.transform = '';
                     setIsSwipeAction(null);
@@ -851,14 +856,14 @@
                                     <p className="text-xs text-gray-400 opacity-60">タップして答えを表示</p>
                                     {/* 修正: ガイドUI (✕ < 👆 > ◯) */}
                                     <div className="md:hidden text-gray-300 flex items-center mt-1 gap-2 w-full justify-center px-4">
-                                        <span className="text-lg font-bold text-gray-400 opacity-80">✕</span>
+                                        <span className="text-lg font-bold text-gray-400 opacity-80 animate-flow-x">✕</span>
                                         <i className="fas fa-chevron-left animate-flow-right opacity-50 text-xs"></i>
-                                        <div className="animate-slide-hand-slow mx-2 flex flex-col items-center">
+                                        <div className="mx-2 flex flex-col items-center">
                                             <i className="fas fa-hand-pointer text-2xl text-[#258FAF] opacity-80"></i>
                                             <span className="text-[8px] text-gray-400 mt-1">swipe</span>
                                         </div>
                                         <i className="fas fa-chevron-right animate-flow-left opacity-50 text-xs"></i>
-                                        <span className="text-lg font-bold text-[#258FAF] opacity-80">◯</span>
+                                        <span className="text-lg font-bold text-[#258FAF] opacity-80 animate-flow-o">◯</span>
                                     </div>
                                 </div>
                             </div>
@@ -877,6 +882,20 @@
                                 <button onClick={(e) => { e.stopPropagation(); speak(currentCard.word, currentCard.audioUrl); }} className="neu-btn w-12 h-12 flex items-center justify-center rounded-full mt-2 text-[#258FAF]">
                                     <i className="fas fa-volume-up"></i>
                                 </button>
+                                
+                                {/* 裏面にもスワイプガイドを表示 */}
+                                <div className="absolute bottom-6 w-full flex flex-col items-center gap-2 md:hidden">
+                                    <div className="text-gray-300 flex items-center mt-1 gap-2 w-full justify-center px-4">
+                                        <span className="text-lg font-bold text-gray-400 opacity-80 animate-flow-x">✕</span>
+                                        <i className="fas fa-chevron-left animate-flow-right opacity-50 text-xs"></i>
+                                        <div className="mx-2 flex flex-col items-center">
+                                            <i className="fas fa-hand-pointer text-2xl text-[#258FAF] opacity-80"></i>
+                                            <span className="text-[8px] text-gray-400 mt-1">swipe</span>
+                                        </div>
+                                        <i className="fas fa-chevron-right animate-flow-left opacity-50 text-xs"></i>
+                                        <span className="text-lg font-bold text-[#258FAF] opacity-80 animate-flow-o">◯</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
