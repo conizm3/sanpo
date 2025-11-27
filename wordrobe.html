@@ -109,6 +109,7 @@
             to { opacity: 0; transform: translateX(-50px); } 
         }
 
+        /* 追加: 右へスライドアウト (Clear用) */
         .slide-out-right { animation: slideOutRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
         @keyframes slideOutRight { 
             from { opacity: 1; transform: translateX(0); } 
@@ -288,7 +289,6 @@
             // 修正: 英語入力の場合はスペルチェックのためにFreeDictも同時に叩く (Strict Mode)
             const promises = [translateText(term, langPair)];
             if (!isJp) {
-                // 英文判定: スペースが含まれる場合は単語チェックをスキップ
                 if (!term.trim().includes(' ')) {
                     promises.push(fetchFreeDictData(term));
                 }
@@ -296,7 +296,6 @@
 
             const [trans, freeDictResult] = await Promise.all(promises);
 
-            // 英語入力(単語)でFreeDictが見つからなければスペルミスとみなす
             if (!isJp && !term.trim().includes(' ') && (!freeDictResult || freeDictResult.length === 0 || (freeDictResult.title && freeDictResult.title === "No Definitions Found"))) {
                 throw new Error("NOT_FOUND");
             }
@@ -352,7 +351,6 @@
             if (!jishoFound) {
                 let trans = await translateText(term, isJpSearch ? "ja|en" : "en|ja");
                 
-                // 修正: 英語入力でJishoになく、文章でもない場合はFreeDictをチェック（スペルミス判定の再確認）
                 if (!isJpSearch && !term.trim().includes(' ')) {
                      const fd = await fetchFreeDictData(term);
                      if (!fd || fd.length === 0) throw new Error("NOT_FOUND");
@@ -544,7 +542,6 @@
                 try {
                     const coreData = await fetchRichData(term);
                     
-                    // 修正: 確報取得時点で、バックグラウンドでDB更新を実行
                     onUpdateWord(coreData);
 
                     if (isMounted.current && currentId === searchIdRef.current) {
@@ -553,7 +550,6 @@
                         setLoading(false);
 
                         fetchEnrichment(coreData, term).then(enriched => {
-                            // 修正: 詳細データ取得時もDB更新
                             if (enriched) {
                                 onUpdateWord(enriched);
                             }
@@ -564,7 +560,6 @@
                              if (isMounted.current && currentId === searchIdRef.current) setIsEnriching(false); 
                         });
                     } else {
-                        // 修正: マウントされていなくても詳細取得を継続しDB更新
                          fetchEnrichment(coreData, term).then(enriched => {
                             if (enriched) {
                                 onUpdateWord(enriched);
@@ -587,7 +582,6 @@
                 if (externalResult && resultRef.current) resultRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }, [externalResult]);
 
-            // 自動データ更新ロジック (表示中のデータ用)
             useEffect(() => {
                 if (externalResult) {
                     const savedItem = savedWords.find(w => w.word === externalResult.word);
@@ -602,11 +596,10 @@
             const currentData = externalResult;
             const isSaved = currentData && savedWords.some(w => w.word === currentData.word);
 
-            // 修正: フローティングボタンから呼ばれるリセット関数
             const resetToHome = () => {
-                searchIdRef.current++; // 古い処理を無効化
-                setTerm('');
-                setExternalResult(null);
+                searchIdRef.current++; 
+                setExternalResult(null); 
+                setTerm(''); 
                 setLoading(false);
                 setIsEnriching(false);
                 
@@ -631,16 +624,7 @@
 
                     {currentData && (
                         <div ref={resultRef} className="neu-flat p-5 md:p-6 mb-8 fade-in relative mt-8">
-                            {/* 修正: 閉じるボタン (中央上部・枠外) */}
-                            {isFromList && (
-                                <button 
-                                    onClick={onBack} 
-                                    className="absolute -top-5 left-1/2 transform -translate-x-1/2 bg-white text-gray-400 w-10 h-10 rounded-full shadow-md flex items-center justify-center z-20 hover:text-[#258FAF] transition-colors border border-gray-100"
-                                >
-                                    <i className="fas fa-times text-lg"></i>
-                                </button>
-                            )}
-
+                            {isFromList && <button onClick={onBack} className="absolute -top-5 left-1/2 transform -translate-x-1/2 bg-white text-gray-400 w-10 h-10 rounded-full shadow-md flex items-center justify-center z-20 hover:text-[#258FAF] transition-colors border border-gray-100"><i className="fas fa-times text-lg"></i></button>}
                             <div className="flex justify-between items-start mb-6 border-b border-gray-100 pb-4">
                                 <div>
                                     <h2 className="text-3xl md:text-4xl font-bold text-[#258FAF] break-all mb-1">{currentData.word}</h2>
@@ -686,10 +670,17 @@
                         </div>
                     )}
                     
-                    {/* フローティングボタン: 検索画面をリセットしてトップに戻る */}
                     {!isFromList && currentData && (
                         <button
-                            onClick={resetToHome}
+                            onClick={() => { 
+                                searchIdRef.current++; 
+                                setExternalResult(null); 
+                                setTerm(''); 
+                                setLoading(false);
+                                setIsEnriching(false);
+                                const mainEl = document.querySelector('main');
+                                if (mainEl) mainEl.scrollTop = 0;
+                            }}
                             className="fixed bottom-[160px] right-4 w-14 h-14 bg-[#258FAF] text-white rounded-full shadow-lg flex items-center justify-center z-[60] hover:bg-[#1d6f8c] transition-transform active:scale-95"
                         >
                             <i className="fas fa-search text-xl"></i>
@@ -764,7 +755,7 @@
                     setIndex(prev => prev + 1);
                     setIsExiting(false);
                     setIsSwipeAction(null);
-                    if (cardRef.current) cardRef.current.style.transform = ''; 
+                    if (cardRef.current) cardRef.current.style.transform = ''; // Reset transform
                 }, 250);
             };
 
@@ -804,8 +795,8 @@
                 const distance = touchStartX.current - touchEndX;
                 
                 if (Math.abs(distance) > 100) { 
-                    if (distance > 0) handleNext(false); 
-                    else handleNext(true); 
+                    if (distance > 0) handleNext(false); // Left -> Unclear
+                    else handleNext(true); // Right -> Clear
                 } else {
                     cardRef.current.style.transform = '';
                     setIsSwipeAction(null);
@@ -831,7 +822,7 @@
                 <div className="h-full flex flex-col items-center justify-center pb-4 relative fade-in overflow-hidden">
                     <div 
                         ref={cardRef}
-                        className={`w-full max-w-sm h-[420px] card-flip cursor-pointer ${isFlipped ? 'flipped' : ''} ${isExiting ? 'slide-out-left' : 'slide-in-right'}`} 
+                        className={`w-full max-w-sm h-[420px] card-flip cursor-pointer ${isFlipped ? 'flipped' : ''} ${isExiting ? (isSwipeAction === 'clear' ? 'slide-out-right' : 'slide-out-left') : 'slide-in-right'}`} 
                         onClick={toggleFlip}
                         onTouchStart={onTouchStart}
                         onTouchMove={onTouchMove}
@@ -848,7 +839,7 @@
                                     </button>
                                 </div>
                                 
-                                {/* Swipe Feedback Stamps */}
+                                {/* Swipe Feedback Stamps (Revised Colors) */}
                                 {isSwipeAction === 'clear' && (
                                     <div className="absolute top-10 right-10 border-4 border-[#258FAF] text-[#258FAF] font-black text-2xl p-2 rounded transform rotate-12 opacity-80 pointer-events-none">CLEAR</div>
                                 )}
@@ -858,16 +849,16 @@
 
                                 <div className="absolute bottom-6 w-full flex flex-col items-center gap-2">
                                     <p className="text-xs text-gray-400 opacity-60">タップして答えを表示</p>
-                                    {/* 修正: ガイドUI */}
-                                    <div className="md:hidden text-gray-300 flex items-center mt-1 gap-6 w-full justify-center px-8">
-                                        <span className="text-lg font-bold text-gray-400 opacity-80 animate-flow-x">✕</span>
-                                        <div className="flex items-center gap-1 text-gray-400 animate-flow-left opacity-50"><i className="fas fa-chevron-left text-xs"></i></div>
+                                    {/* 修正: ガイドUI (✕ < 👆 > ◯) */}
+                                    <div className="md:hidden text-gray-300 flex items-center mt-1 gap-2 w-full justify-center px-4">
+                                        <span className="text-lg font-bold text-gray-400 opacity-80">✕</span>
+                                        <i className="fas fa-chevron-left animate-flow-right opacity-50 text-xs"></i>
                                         <div className="animate-slide-hand-slow mx-2 flex flex-col items-center">
                                             <i className="fas fa-hand-pointer text-2xl text-[#258FAF] opacity-80"></i>
                                             <span className="text-[8px] text-gray-400 mt-1">swipe</span>
                                         </div>
-                                        <div className="flex items-center gap-1 text-[#258FAF] animate-flow-right opacity-50"><i className="fas fa-chevron-right text-xs"></i></div>
-                                        <span className="text-lg font-bold text-[#258FAF] opacity-80 animate-flow-o">◯</span>
+                                        <i className="fas fa-chevron-right animate-flow-left opacity-50 text-xs"></i>
+                                        <span className="text-lg font-bold text-[#258FAF] opacity-80">◯</span>
                                     </div>
                                 </div>
                             </div>
@@ -890,7 +881,7 @@
                         </div>
                     </div>
                     
-                    {/* PC Buttons */}
+                    {/* PC Buttons (Hidden on mobile) */}
                     <div className="w-full max-w-sm mt-4 md:mt-8 flex gap-4 hidden md:flex">
                         <button onClick={() => handleNext(false)} className="flex-1 bg-slate-200 text-slate-600 py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2"><i className="fas fa-times"></i> Unclear</button>
                         <button onClick={() => handleNext(true)} className="flex-1 bg-[#258FAF] text-white py-4 rounded-2xl font-bold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2"><i className="far fa-circle"></i> Clear</button>
@@ -1073,11 +1064,8 @@
                     try {
                         const imported = JSON.parse(event.target.result);
                         if (Array.isArray(imported)) {
-                            openConfirm('現在のデータを上書きしますか？\n（既存のデータは消去されます）', async () => {
-                                await db.words.clear();
-                                await db.words.bulkAdd(imported);
-                                const newWords = await db.words.toArray();
-                                setSavedWords(newWords.sort((a,b) => b.addedAt - a.addedAt));
+                            openConfirm('現在のデータを上書きしますか？\n（既存の単語帳は消え、ファイルの内容になります）', () => {
+                                setSavedWords(imported);
                                 showToast('データを復元しました');
                                 setIsSettingsOpen(false);
                             });
