@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9941600818813301"
-     crossorigin="anonymous"></script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9941600818813301" crossorigin="anonymous"></script>
     
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -118,23 +117,42 @@
             to { opacity: 0; transform: translateX(50px); } 
         }
         
-        /* Flow Animation for Arrows (Outward) */
-        .animate-flow-out-left {
-            animation: flowOutLeft 1.5s infinite;
+        /* Swipe Hint Animation (Icon) - Slide Left/Right Slower */
+        .animate-slide-hand-slow {
+            animation: slideHandSlow 3s infinite ease-in-out;
         }
-        @keyframes flowOutLeft {
-            0% { opacity: 0; transform: translateX(5px); }
-            20% { opacity: 1; }
+        @keyframes slideHandSlow {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-15px); } /* Left */
+            50% { transform: translateX(0); }
+            75% { transform: translateX(15px); } /* Right */
+            100% { transform: translateX(0); }
+        }
+
+        /* Flow Animation for Arrows */
+        .animate-flow-left {
+            animation: flowLeft 1.5s infinite;
+        }
+        @keyframes flowLeft {
+            0% { opacity: 0; transform: translateX(10px); }
+            50% { opacity: 1; transform: translateX(0); }
             100% { opacity: 0; transform: translateX(-10px); }
         }
-        .animate-flow-out-right {
-            animation: flowOutRight 1.5s infinite;
+        .animate-flow-right {
+            animation: flowRight 1.5s infinite;
         }
-        @keyframes flowOutRight {
-            0% { opacity: 0; transform: translateX(-5px); }
-            20% { opacity: 1; }
+        @keyframes flowRight {
+            0% { opacity: 0; transform: translateX(-10px); }
+            50% { opacity: 1; transform: translateX(0); }
             100% { opacity: 0; transform: translateX(10px); }
         }
+        
+        /* Flow Animation for X and O */
+        .animate-flow-x { animation: flowX 1.5s infinite; }
+        @keyframes flowX { 0% { opacity: 0; transform: translateX(10px); } 50% { opacity: 1; transform: translateX(0); } 100% { opacity: 0; transform: translateX(-10px); } }
+        
+        .animate-flow-o { animation: flowO 1.5s infinite; }
+        @keyframes flowO { 0% { opacity: 0; transform: translateX(-10px); } 50% { opacity: 1; transform: translateX(0); } 100% { opacity: 0; transform: translateX(10px); } }
 
         /* Card Flip Fixed */
         .card-flip { perspective: 1000px; }
@@ -520,7 +538,6 @@
                 try {
                     const coreData = await fetchRichData(term);
                     
-                    // 修正: 確報取得時点でDB更新
                     onUpdateWord(coreData);
 
                     if (isMounted.current && currentId === searchIdRef.current) {
@@ -529,7 +546,6 @@
                         setLoading(false);
 
                         fetchEnrichment(coreData, term).then(enriched => {
-                            // 修正: 詳細データ取得時もDB更新
                             if (enriched) {
                                 onUpdateWord(enriched);
                             }
@@ -540,7 +556,6 @@
                              if (isMounted.current && currentId === searchIdRef.current) setIsEnriching(false); 
                         });
                     } else {
-                        // 修正: 画面から離れていても詳細取得を継続しDB更新
                          fetchEnrichment(coreData, term).then(enriched => {
                             if (enriched) {
                                 onUpdateWord(enriched);
@@ -576,17 +591,6 @@
 
             const currentData = externalResult;
             const isSaved = currentData && savedWords.some(w => w.word === currentData.word);
-
-            const resetToHome = () => {
-                searchIdRef.current++; 
-                setExternalResult(null); 
-                setTerm(''); 
-                setLoading(false);
-                setIsEnriching(false);
-                
-                const mainEl = document.querySelector('main');
-                if (mainEl) mainEl.scrollTop = 0;
-            };
 
             return (
                 <div className="fade-in">
@@ -649,15 +653,6 @@
                                 <p className="mt-1">This data is available under the <a href="https://creativecommons.org/licenses/by-sa/3.0/" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">CC BY-SA 3.0 license</a>.</p>
                             </div>
                         </div>
-                    )}
-                    
-                    {!isFromList && currentData && (
-                        <button
-                            onClick={resetToHome}
-                            className="fixed bottom-[160px] right-4 w-14 h-14 bg-[#258FAF] text-white rounded-full shadow-lg flex items-center justify-center z-[60] hover:bg-[#1d6f8c] transition-transform active:scale-95"
-                        >
-                            <i className="fas fa-search text-xl"></i>
-                        </button>
                     )}
                     
                     <div className="ad-slot mt-8 mx-auto w-full max-w-[320px] h-[50px] ad-slot flex items-center justify-center text-xs rounded">広告スペース</div>
@@ -822,17 +817,16 @@
 
                                 <div className="absolute bottom-6 w-full flex flex-col items-center gap-2">
                                     <p className="text-xs text-gray-400 opacity-60">タップして答えを表示</p>
-                                    
-                                    {/* 修正: ガイドUI (✕ < 👆 > ◯) */}
+                                    {/* Swipe Guide */}
                                     <div className="md:hidden text-gray-300 flex items-center mt-1 gap-2 w-full justify-center px-4">
-                                        <span className="text-lg font-bold text-gray-400 opacity-80">✕　</span>
-                                        <i className="fas fa-chevron-left animate-flow-out-left opacity-50 text-xs"></i>
+                                        <span className="text-lg font-bold text-gray-400 opacity-80">✕</span>
+                                        <i className="fas fa-chevron-left animate-flow-left opacity-50 text-xs"></i>
                                         <div className="mx-2 flex flex-col items-center">
                                             <i className="fas fa-hand-pointer text-2xl text-[#258FAF] opacity-80 animate-slide-hand-slow"></i>
                                             <span className="text-[8px] text-gray-400 mt-1">swipe</span>
                                         </div>
-                                        <i className="fas fa-chevron-right animate-flow-out-right opacity-50 text-xs"></i>
-                                        <span className="text-lg font-bold text-[#258FAF] opacity-80">　◯</span>
+                                        <i className="fas fa-chevron-right animate-flow-right opacity-50 text-xs"></i>
+                                        <span className="text-lg font-bold text-[#258FAF] opacity-80">◯</span>
                                     </div>
                                 </div>
                             </div>
@@ -854,14 +848,14 @@
                                 {/* 裏面ガイド */}
                                 <div className="absolute bottom-6 w-full flex flex-col items-center gap-2 md:hidden">
                                     <div className="text-gray-300 flex items-center mt-1 gap-2 w-full justify-center px-4">
-                                        <span className="text-lg font-bold text-gray-400 opacity-80">✕　</span>
-                                        <i className="fas fa-chevron-left animate-flow-out-left opacity-50 text-xs"></i>
+                                        <span className="text-lg font-bold text-gray-400 opacity-80">✕</span>
+                                        <i className="fas fa-chevron-left animate-flow-left opacity-50 text-xs"></i>
                                         <div className="mx-2 flex flex-col items-center">
                                             <i className="fas fa-hand-pointer text-2xl text-[#258FAF] opacity-80 animate-slide-hand-slow"></i>
                                             <span className="text-[8px] text-gray-400 mt-1">swipe</span>
                                         </div>
-                                        <i className="fas fa-chevron-right animate-flow-out-right opacity-50 text-xs"></i>
-                                        <span className="text-lg font-bold text-[#258FAF] opacity-80">　◯</span>
+                                        <i className="fas fa-chevron-right animate-flow-right opacity-50 text-xs"></i>
+                                        <span className="text-lg font-bold text-[#258FAF] opacity-80">◯</span>
                                     </div>
                                 </div>
                             </div>
@@ -945,12 +939,8 @@
                 });
             };
 
-            // 修正: IndexedDBも更新するように変更
             const handleUpdateWord = async (wordData) => {
-                // State更新
                 setSavedWords(prev => prev.map(w => w.word === wordData.word ? { ...w, ...wordData } : w));
-                
-                // DB更新
                 try {
                     const wordInDb = await db.words.where('word').equals(wordData.word).first();
                     if (wordInDb) {
@@ -981,7 +971,7 @@
                             repetition: 0,
                             efactor: 2.5
                         };
-                        const id = await db.words.add(newWord); // Dexie returns ID
+                        const id = await db.words.add(newWord); 
                         setSavedWords(prev => [{ ...newWord, id }, ...prev]);
                         showToast('保存しました');
                     }
@@ -1067,7 +1057,7 @@
                         className="p-4 z-50 flex justify-between items-center h-16 neu-flat mx-4 mt-4 mb-2 relative cursor-pointer hover:opacity-80 transition-opacity"
                     >
                         <div className="flex-1 flex justify-center items-center" onClick={resetToHome}>
-                            <img src="https://conizm3.github.io/sanpo/wordrobe/images/wordrobe-top.png" alt="wordrobe" className="h-8" />
+                            <img src="wordloop-top.svg" alt="Wordloop" className="h-8" />
                         </div>
                         <button onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(true); }} className="absolute right-4 text-gray-400 hover:text-[#258FAF]">
                             <i className="fas fa-cog"></i>
@@ -1149,6 +1139,16 @@
                             <span className="text-[10px] font-bold">単語帳</span>
                         </button>
                     </nav>
+
+                    {/* フローティングボタン: 検索画面をリセットしてトップに戻る */}
+                    {!isFromList && searchResult && tab === 'search' && (
+                        <button
+                            onClick={resetToHome}
+                            className="fixed bottom-[160px] right-4 w-14 h-14 bg-[#258FAF] text-white rounded-full shadow-lg flex items-center justify-center z-[60] hover:bg-[#1d6f8c] transition-transform active:scale-95"
+                        >
+                            <i className="fas fa-search text-xl"></i>
+                        </button>
+                    )}
 
                     {toastMsg && <Toast msg={toastMsg} onClose={() => setToastMsg(null)} />}
                 </div>
