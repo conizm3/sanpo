@@ -174,19 +174,20 @@ input, textarea {
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-        /* ▼▼▼ 修正2: ヘッダーの高さ修正（高すぎないようにパディングを縮小） ▼▼▼ */
+       /* ▼▼▼ Header: 高さ調整版 ▼▼▼ */
         header.custom-header {
             width: 100%;
             margin: 0 !important;
             border-radius: 0 0 24px 24px !important;
             
-            /* ノッチの高さ(env)のみ確保し、余計な余白を削除 */
+            /* 修正: パディングを必要最小限に縮小 */
+            /* ノッチの高さ(env) を取得し、なければ20px。余分な加算を削除 */
             padding-top: env(safe-area-inset-top, 20px) !important;
-            padding-bottom: 10px; /* 必要最小限の余白 */
+            padding-bottom: 8px; /* 下の余白も小さく */
             padding-left: 20px;
             padding-right: 20px;
             
-            /* 高さを自動にし、min-heightを削除 */
+            /* 修正: 高さをコンテンツに合わせる（min-height削除） */
             height: auto !important;
             
             display: flex;
