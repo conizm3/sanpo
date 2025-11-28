@@ -34,7 +34,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 
-   <style>
+<style>
         :root {
             --bg-color: #F8FAFC;
             --text-main: #475569;
@@ -54,30 +54,17 @@
             color: var(--text-main);
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: none;
-
-            body {
-            font-family: 'Noto Sans JP', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            -webkit-tap-highlight-color: transparent;
-            overscroll-behavior-y: none;
             
-            /* ここにあった user-select: none; を削除し、text（選択可能）にします */
-            -webkit-user-select: text;
-            user-select: text;
+            /* 基本的にアプリらしく選択不可にするが... */
+            -webkit-user-select: none;
+            user-select: none;
             
             /* タップの反応を良くする設定 */
             touch-action: manipulation;
         }
-            
-            /* ▼▼▼ 修正1: 全体の選択を禁止しつつ、タップ動作を正常化 ▼▼▼ */
-            -webkit-user-select: none;
-            user-select: none;
-            touch-action: manipulation; 
-        }
 
-        /* ▼▼▼ 修正1: 入力フォームだけは「絶対に」選択・入力できるようにする（これでキーボードが出ます） ▼▼▼ */
-input, textarea {
+        /* 入力フォームは「絶対に」選択・入力できるようにする（重要） */
+        input, textarea {
             /* iOSで入力時に画面がズームされるのを防ぐ必須設定 */
             font-size: 16px !important;
             
@@ -174,20 +161,25 @@ input, textarea {
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-       /* ▼▼▼ Header: 高さ調整版 ▼▼▼ */
+        .h-screen-safe {
+            height: 100vh;
+            height: 100dvh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+       /* Header: 高さ調整版 */
         header.custom-header {
             width: 100%;
             margin: 0 !important;
             border-radius: 0 0 24px 24px !important;
             
-            /* 修正: パディングを必要最小限に縮小 */
-            /* ノッチの高さ(env) を取得し、なければ20px。余分な加算を削除 */
             padding-top: env(safe-area-inset-top, 20px) !important;
-            padding-bottom: 8px; /* 下の余白も小さく */
+            padding-bottom: 8px;
             padding-left: 20px;
             padding-right: 20px;
             
-            /* 修正: 高さをコンテンツに合わせる（min-height削除） */
             height: auto !important;
             
             display: flex;
