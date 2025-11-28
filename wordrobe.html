@@ -230,16 +230,12 @@
         // --- 2. Helper Functions ---
         const translateText = async (text, langPair = "en|ja") => {
             if (!text) return "";
-            const [source, target] = langPair.split('|');
+const fetchJishoData = async (term) => {
             try {
-                const res = await fetch(`https://lingva.ml/api/v1/${source}/${target}/${encodeURIComponent(text)}`);
-                if (!res.ok) return text;
-                const data = await res.json();
-                return data.translation;
-            } catch (e) {
-                console.warn("Translation failed", e);
-                return text; 
-            }
+                const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://jisho.org/api/v1/search/words?keyword=${encodeURIComponent(term)}`)}`);
+                if (!res.ok) return null;
+                return await res.json();
+            } catch (e) { return null; }
         };
 
         const isJapanese = (text) => /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\uff00-\uff9f\u4e00-\u9faf\u3400-\u4dbf]/.test(text);
